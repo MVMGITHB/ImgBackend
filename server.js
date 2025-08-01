@@ -65,7 +65,31 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter });
 
-app.use(cors());
+
+const allowedOrigins = new Set([
+  "http://localhost:5173",
+  "http://localhost:3000",
+
+
+]);
+
+// CORS middleware setup
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // If origin is undefined (like Postman or curl), allow it
+      
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        // console.log("Origin:", origin);
+      } else {
+        console.warn("Blocked CORS request from:", origin);
+        callback(new Error("CORS not allowed for this origin"));
+      }
+    },
+    credentials: true, // Allows cookies and session headers
+  })
+);
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use('/uploads', express.static('uploads'));
@@ -139,6 +163,10 @@ app.delete('/api/delete-image/:id', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+app.get('/',(req,res)=>{
+   res.send('<h1> welcome to image uploader website</h1>')
+})
 
 // Start server
 app.listen(PORT, () => {
