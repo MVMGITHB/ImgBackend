@@ -71,6 +71,8 @@ const allowedOrigins = new Set([
   "http://localhost:5173/",
   "http://localhost:3000",
   "http://localhost:3000/",
+  "https://panel.gtright.in/",
+  "https://panel.gtright.in",
 
 
 ]);
