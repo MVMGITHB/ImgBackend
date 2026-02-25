@@ -181,7 +181,7 @@ app.delete('/api/delete-image/:id', async (req, res) => {
   }
 });
 
-app.get('/api', (req, res) => {
+app.get('/', (req, res) => {
    res.send(`
    <!DOCTYPE html>
    <html lang="en">
