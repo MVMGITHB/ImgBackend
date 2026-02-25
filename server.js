@@ -181,9 +181,94 @@ app.delete('/api/delete-image/:id', async (req, res) => {
   }
 });
 
-app.get('/',(req,res)=>{
-   res.send('<h1> welcome to image uploader website</h1>')
-})
+app.get('/api', (req, res) => {
+   res.send(`
+   <!DOCTYPE html>
+   <html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>GT Right - Image Uploader API</title>
+      <style>
+         * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+         }
+
+         body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #4f46e5, #9333ea);
+         }
+
+         .card {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: fadeIn 0.8s ease-in-out;
+         }
+
+         h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #111827;
+         }
+
+         p {
+            font-size: 15px;
+            color: #6b7280;
+            margin-bottom: 25px;
+         }
+
+         .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background: linear-gradient(90deg, #4f46e5, #9333ea);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            transition: 0.3s ease;
+         }
+
+         .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+         }
+
+         @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+         }
+
+         @media(max-width: 480px) {
+            .card {
+               padding: 25px;
+            }
+            h1 {
+               font-size: 20px;
+            }
+         }
+      </style>
+   </head>
+   <body>
+      <div class="card">
+         <h1>🚀 Welcome to GT Right API</h1>
+         <p>This is the Image Uploader backend service.</p>
+         <a class="btn" href="https://gtright.in/">Go to Image Panel</a>
+      </div>
+   </body>
+   </html>
+   `);
+});
 
 // Start server
 app.listen(PORT, () => {
