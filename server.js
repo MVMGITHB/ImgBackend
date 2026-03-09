@@ -1,15 +1,16 @@
-import express from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import dotenv from 'dotenv'
+import express from "express";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 
-dotenv.config()
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT ||3000;
+const PORT = process.env.PORT || 3000;
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
@@ -17,8 +18,8 @@ mongoose.connect(process.env.MONGO_URI, {
   useUnifiedTopology: true,
 });
 const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
-db.once('open', () => console.log('Connected to MongoDB'));
+db.on("error", console.error.bind(console, "MongoDB connection error:"));
+db.once("open", () => console.log("Connected to MongoDB"));
 
 // Define Image schema
 const imageSchema = new mongoose.Schema({
@@ -30,10 +31,10 @@ const imageSchema = new mongoose.Schema({
   },
 });
 
-const Image = mongoose.model('Image', imageSchema);
+const Image = mongoose.model("Image", imageSchema);
 
 // Ensure uploads directory exists
-const uploadDir = 'uploads';
+const uploadDir = "uploads";
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
@@ -44,11 +45,11 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
     const baseName = path.basename(file.originalname, ext);
     cb(null, `${baseName}${ext}`);
-  }
+  },
 });
 
 // const storage = multer.diskStorage({
@@ -63,20 +64,20 @@ const storage = multer.diskStorage({
 //   }
 // });
 
-
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp|svg|pdf/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const extname = allowedTypes.test(
+    path.extname(file.originalname).toLowerCase(),
+  );
   const mimetype = allowedTypes.test(file.mimetype);
   if (extname && mimetype) {
     cb(null, true);
   } else {
-    cb(new Error('Only images are allowed!'));
+    cb(new Error("Only images are allowed!"));
   }
 };
 
 const upload = multer({ storage, fileFilter });
-
 
 const allowedOrigins = new Set([
   // "http://localhost:5173",
@@ -85,9 +86,7 @@ const allowedOrigins = new Set([
   // "http://localhost:3000/",
   "https://panel.gtright.in/",
   "https://panel.gtright.in",
-  "https://gtright.in"
-
-
+  "https://gtright.in",
 ]);
 
 // CORS middleware setup
@@ -95,7 +94,7 @@ app.use(
   cors({
     origin: (origin, callback) => {
       // If origin is undefined (like Postman or curl), allow it
-      
+
       if (!origin || allowedOrigins.has(origin)) {
         callback(null, true);
         // console.log("Origin:", origin);
@@ -105,16 +104,16 @@ app.use(
       }
     },
     credentials: true, // Allows cookies and session headers
-  })
+  }),
 );
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
-app.use('/uploads', express.static('uploads'));
+app.use(express.json({ limit: "100mb" }));
+app.use(express.urlencoded({ limit: "100mb", extended: true }));
+app.use("/uploads", express.static("uploads"));
 
 // Image upload route
-app.post('/api/upload', upload.single('image'), async (req, res) => {
+app.post("/api/upload", upload.single("image"), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
+    return res.status(400).json({ error: "No file uploaded" });
   }
 
   const imagePath = `/uploads/${req.file.filename}`;
@@ -128,61 +127,98 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     await newImage.save();
 
     res.json({
-      message: 'Image uploaded and saved to database successfully',
+      message: "Image uploaded and saved to database successfully",
       data: newImage,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to save image to database' });
+    res.status(500).json({ error: "Failed to save image to database" });
   }
 });
 
-app.get("/getAllImage",async(req,res)=>{
-    try {
-        
-      const images = await Image.find({}).sort({ uploadedAt: -1 });
+app.get("/getAllImage", async (req, res) => {
+  try {
+    const images = await Image.find({}).sort({ uploadedAt: -1 });
 
-      res.status(200).json({images})
-    } catch (error) {
-        res.status(500).json({
-          message:"Internal server error",
-          error
-        })
-    }
-})
-
+    res.status(200).json({ images });
+  } catch (error) {
+    res.status(500).json({
+      message: "Internal server error",
+      error,
+    });
+  }
+});
 
 // delete image
-app.delete('/api/delete-image/:id', async (req, res) => {
+app.delete("/api/delete-image/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
     // Find image by ID
     const image = await Image.findById(id);
     if (!image) {
-      return res.status(404).json({ error: 'Image not found' });
+      return res.status(404).json({ error: "Image not found" });
     }
 
     // Delete file from filesystem
-    const filePath = path.join(process.cwd(), 'uploads', image.filename);
+    const filePath = path.join(process.cwd(), "uploads", image.filename);
     fs.unlink(filePath, async (err) => {
-      if (err && err.code !== 'ENOENT') {
-        return res.status(500).json({ error: 'Error deleting file from folder' });
+      if (err && err.code !== "ENOENT") {
+        return res
+          .status(500)
+          .json({ error: "Error deleting file from folder" });
       }
 
       // Remove from MongoDB
       await Image.findByIdAndDelete(id);
 
-      res.json({ message: 'Image deleted successfully from database and folder' });
+      res.json({
+        message: "Image deleted successfully from database and folder",
+      });
     });
-
   } catch (error) {
-    console.error('Delete error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Delete error:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-app.get('/', (req, res) => {
-   res.send(`
+app.post("/api/admin/login", (req, res) => {
+  console.log("Called");
+  console.log("Req data:", req.body);
+
+  const { email, password } = req.body;
+
+  // Check email
+  if (email !== process.env.ADMIN_EMAIL) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid email",
+    });
+  }
+
+  // Check password
+  if (password !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({
+      success: false,
+      message: "Incorrect password",
+    });
+  }
+
+  // Generate token
+  const token = jwt.sign(
+    { email },
+    process.env.JWT_SECRET,
+    { expiresIn: "1d" }
+  );
+
+  res.json({
+    success: true,
+    message: "Login successful",
+    token,
+  });
+});
+
+app.get("/", (req, res) => {
+  res.send(`
    <!DOCTYPE html>
    <html lang="en">
    <head>
@@ -261,7 +297,7 @@ app.get('/', (req, res) => {
    </head>
    <body>
       <div class="card">
-         <h1>🚀 Welcome to GT Right API</h1>
+         <h1>🚀 Welcome to GT Right Panel</h1>
          <p>This is the Image Uploader backend service.</p>
          <a class="btn" href="https://gtright.in/">Go to Image Panel</a>
       </div>
