@@ -14,10 +14,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
-});
+
 
 
 
@@ -117,7 +114,7 @@ app.use(
 );
 
 app.use(helmet());
-app.use(limiter);
+
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ limit: "100mb", extended: true }));
 app.use("/uploads", express.static("uploads"));
