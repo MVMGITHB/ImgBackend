@@ -6,11 +6,20 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100
+});
+
+
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
@@ -65,7 +74,7 @@ const storage = multer.diskStorage({
 // });
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp|svg|pdf/;
+  const allowedTypes = /jpeg|jpg|png|gif|webp|pdf/;
   const extname = allowedTypes.test(
     path.extname(file.originalname).toLowerCase(),
   );
@@ -106,12 +115,38 @@ app.use(
     credentials: true, // Allows cookies and session headers
   }),
 );
+
+app.use(helmet());
+app.use(limiter);
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ limit: "100mb", extended: true }));
 app.use("/uploads", express.static("uploads"));
 
+
+const authenticateAdmin = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  // console.log("Auth Header:", authHeader);
+
+  if (!authHeader) {
+    return res.status(401).json({ message: "Token missing" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.admin = decoded;
+    next();
+  } catch {
+    return res.status(403).json({ message: "Invalid token" });
+  }
+};
+
+
+
 // Image upload route
-app.post("/api/upload", upload.single("image"), async (req, res) => {
+app.post("/api/upload", authenticateAdmin,  upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
@@ -125,7 +160,7 @@ app.post("/api/upload", upload.single("image"), async (req, res) => {
       path: imagePath,
     });
     await newImage.save();
-
+    
     res.json({
       message: "Image uploaded and saved to database successfully",
       data: newImage,
@@ -149,7 +184,7 @@ app.get("/getAllImage", async (req, res) => {
 });
 
 // delete image
-app.delete("/api/delete-image/:id", async (req, res) => {
+app.delete("/api/delete-image/:id", authenticateAdmin , async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -182,8 +217,8 @@ app.delete("/api/delete-image/:id", async (req, res) => {
 });
 
 app.post("/api/admin/login", (req, res) => {
-  console.log("Called");
-  console.log("Req data:", req.body);
+  // console.log("Called");
+  // console.log("Req data:", req.body);
 
   const { email, password } = req.body;
 
